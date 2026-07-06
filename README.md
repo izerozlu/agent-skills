@@ -1,4 +1,4 @@
-# izer-skills
+# agent-skills
 
 A personal collection of [Claude Code](https://claude.com/claude-code) skills
 for wrapping up features. They install as **standalone skills**, so you invoke
@@ -18,22 +18,37 @@ commit).
 
 ## Install
 
-Clone the repo and run the installer. It symlinks the skills you choose into
-`~/.claude/skills/`, so a later `git pull` updates them in place.
+Run the installer straight from GitHub. It downloads the skills you choose into
+`~/.claude/skills/`, no clone required.
 
 ```bash
-git clone https://github.com/izerozlu/izer-skills.git
-cd izer-skills
-./install.sh            # interactive: choose per skill
+curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash
 ```
 
-Other modes:
+That runs interactively, prompting per skill. Pass flags and skill names after
+`-- ` to skip the prompts:
 
 ```bash
-./install.sh --all                                  # install everything
-./install.sh finalize-feature commit-in-logical-groups   # install specific skills
-./install.sh --copy --all                           # copy instead of symlink
-./install.sh --uninstall                            # remove installed skills
+# install everything
+curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --all
+
+# install specific skills
+curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- finalize-feature commit-in-logical-groups
+
+# preview without touching the filesystem
+curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --dry-run --all
+
+# remove installed skills (all, or named)
+curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --uninstall
+```
+
+If you have cloned the repo, the same script works locally:
+
+```bash
+./install.sh                 # interactive: choose per skill
+./install.sh --all           # install everything
+./install.sh finalize-feature commit-in-logical-groups
+./install.sh --uninstall     # remove installed skills
 ```
 
 Restart Claude Code after installing so it picks up the new skills, then invoke
@@ -50,14 +65,12 @@ description (for example, "finalize this feature").
 
 ## Updating
 
-Because skills are symlinked, updating is just:
+There is no local clone to `git pull`. Updating is just re-running the same
+install command, which re-downloads the latest skill files:
 
 ```bash
-cd izer-skills
-git pull
+curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --all
 ```
-
-(If you installed with `--copy`, re-run `./install.sh` after pulling.)
 
 ## Manual install
 
@@ -71,7 +84,7 @@ cp -R skills/finalize-feature ~/.claude/skills/
 ## Repository layout
 
 ```
-izer-skills/
+agent-skills/
 ├── install.sh
 └── skills/
     ├── finalize-feature/SKILL.md
