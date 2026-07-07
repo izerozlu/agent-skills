@@ -1,25 +1,30 @@
 #!/usr/bin/env bash
 #
-# install.sh: install agent-skills directly from GitHub into your Claude Code
-# skills directory. This script is self-contained: it downloads skill files
-# over the network, so it works when piped straight from curl with no local
-# clone of the repo present.
+# install.sh: install agent-skills directly from GitHub into the skills
+# directories of the coding agents on your system. This script is self-contained:
+# it downloads skill files over the network, so it works when piped straight from
+# curl with no local clone of the repo present.
+#
+# It detects installed coding agents (Claude Code, OpenAI Codex, Gemini CLI,
+# Cline, GitHub Copilot CLI, opencode) and asks which of them to install into,
+# then which skills to install.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash
 #   curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --all
-#   curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- finalize-feature
+#   curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --all-agents --all
 #
-#   ./install.sh                 # interactive: pick from a menu
-#   ./install.sh --all           # install every skill
-#   ./install.sh finalize-feature commit-in-logical-groups
+#   ./install.sh                 # interactive: pick agents, then skills
+#   ./install.sh --all           # install every skill (agents still resolved)
+#   ./install.sh --agent claude finalize-feature
+#   ./install.sh --all-agents --all
 #   ./install.sh --uninstall     # remove installed skills (all, or named)
 #   ./install.sh --dry-run --all # show what would happen, touch nothing
 #
 # Installing downloads the skill files. Updating means re-running the same
 # command again. There is no local clone to git pull.
 #
-# Skills load when Claude Code starts, so restart your session afterwards.
+# Skills load when an agent starts, so restart the agent afterwards.
 
 set -eu
 
@@ -27,7 +32,18 @@ REPO="izerozlu/agent-skills"
 BRANCH="${IZER_SKILLS_REF:-main}"
 API_TREE="https://api.github.com/repos/$REPO/git/trees/$BRANCH?recursive=1"
 RAW_BASE="https://raw.githubusercontent.com/$REPO/$BRANCH"
-DEST_DIR="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
+DEST_DIR=""
+EXPLICIT_DIR="${CLAUDE_SKILLS_DIR:-${SKILLS_DIR:-}}"
+
+# Registry of known coding agents that read the SKILL.md format, one per line:
+#   id|Display Name|marker dirs (comma-separated, relative to $HOME)|binaries|skills dir (relative to $HOME)
+# An agent is considered present if any marker dir exists or any binary is on PATH.
+AGENTS="claude|Claude Code|.claude|claude|.claude/skills
+codex|OpenAI Codex|.codex|codex|.codex/skills
+gemini|Gemini CLI|.gemini|gemini|.gemini/skills
+cline|Cline|.cline|cline|.cline/skills
+copilot|GitHub Copilot CLI|.copilot,.config/github-copilot|copilot|.copilot/skills
+opencode|opencode|.config/opencode,.opencode|opencode|.config/opencode/skills"
 
 if command -v curl >/dev/null 2>&1; then
   DOWNLOADER="curl"
@@ -42,9 +58,12 @@ TREE_CACHE=""
 esc=$(printf '\033')
 
 ALL=0
+ALL_AGENTS=0
 MODE="install"
 DRY_RUN=0
 NAMES=""
+AGENT_ARGS=""
+AGENT_IDS=""
 
 fetch_stdout() {
   url="$1"
@@ -90,12 +109,105 @@ files_for_skill() {
   printf '%s\n' "$TREE_CACHE" | grep "^skills/$1/" || true
 }
 
+# Print the registry line for an agent id, or return 1 if the id is unknown.
+agent_line() {
+  printf '%s\n' "$AGENTS" | awk -F'|' -v id="$1" '$1==id{print; f=1} END{exit !f}'
+}
+
+agent_field()    { agent_line "$1" | cut -d'|' -f"$2"; }
+agent_name()     { agent_field "$1" 2; }
+agent_skilldir() { agent_field "$1" 5; }
+all_agent_ids()  { printf '%s\n' "$AGENTS" | cut -d'|' -f1 | tr '\n' ' '; }
+
+# Return 0 if the agent described by a registry line is present on this system
+# (any of its marker dirs exists, or any of its binaries is on PATH).
+agent_present() {
+  markers="$(printf '%s' "$1" | cut -d'|' -f3)"
+  bins="$(printf '%s' "$1" | cut -d'|' -f4)"
+  OLDIFS="$IFS"
+  IFS=,
+  for m in $markers; do
+    if [ -e "$HOME/$m" ]; then IFS="$OLDIFS"; return 0; fi
+  done
+  for b in $bins; do
+    if command -v "$b" >/dev/null 2>&1; then IFS="$OLDIFS"; return 0; fi
+  done
+  IFS="$OLDIFS"
+  return 1
+}
+
+# Print the ids of every detected agent, one per line, in registry order.
+detect_agents() {
+  printf '%s\n' "$AGENTS" | while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    if agent_present "$line"; then
+      printf '%s' "$line" | cut -d'|' -f1
+      printf '\n'
+    fi
+  done
+}
+
+# Resolve which agents to install into, populating AGENT_IDS. Honors --agent and
+# --all-agents; otherwise detects agents and (when a terminal is available) shows
+# a menu. Non-interactive with several detected agents defaults to Claude Code if
+# present, else all detected.
+resolve_agents() {
+  detected="$(detect_agents)"
+
+  if [ -n "${AGENT_ARGS# }" ]; then
+    AGENT_IDS=""
+    for id in $AGENT_ARGS; do
+      if agent_line "$id" >/dev/null 2>&1; then
+        AGENT_IDS="$AGENT_IDS $id"
+      else
+        echo "  ! unknown agent: $id (known: $(all_agent_ids))" >&2
+      fi
+    done
+    return
+  fi
+
+  if [ "$ALL_AGENTS" = "1" ]; then AGENT_IDS="$detected"; return; fi
+
+  if [ -z "$detected" ]; then
+    echo "error: no known coding agents detected on this system." >&2
+    echo "Known agents: $(all_agent_ids)" >&2
+    echo "Install one, or target a directory directly with --dir PATH." >&2
+    exit 1
+  fi
+
+  dcount="$(printf '%s\n' "$detected" | grep -c .)"
+  if [ "$dcount" -eq 1 ]; then
+    AGENT_IDS="$detected"
+    echo "Detected one agent: $(agent_name "$detected"). Installing there."
+    return
+  fi
+
+  if [ -r /dev/tty ]; then
+    name_arr=()
+    for id in $detected; do name_arr+=("$(agent_name "$id")"); done
+    sel="$(interactive_select "Select coding agents to install skills into:" "${name_arr[@]}")"
+    AGENT_IDS=""
+    for id in $detected; do
+      nm="$(agent_name "$id")"
+      if printf '%s\n' "$sel" | grep -qxF "$nm"; then AGENT_IDS="$AGENT_IDS $id"; fi
+    done
+  else
+    if printf '%s\n' "$detected" | grep -qx claude; then
+      AGENT_IDS="claude"
+    else
+      AGENT_IDS="$detected"
+    fi
+  fi
+}
+
 # Interactive multi-select menu, drawn on the terminal (/dev/tty) so it keeps
-# working when this script is piped through `curl | bash`. Takes the available
-# skill names as arguments and prints the chosen names, space-separated, to
-# stdout. Controls: up/down (or k/j) move, space toggles, a selects/clears all,
-# enter confirms, q cancels.
+# working when this script is piped through `curl | bash`. First argument is the
+# prompt title; the rest are the selectable items. Prints the chosen items,
+# space-separated, to stdout. Controls: up/down (or k/j) move, space toggles,
+# a selects/clears all, enter confirms, q cancels.
 interactive_select() {
+  title="$1"
+  shift
   tty=/dev/tty
   items=("$@")
   n=${#items[@]}
@@ -114,7 +226,7 @@ interactive_select() {
     done
   }
 
-  printf 'Select skills to install:\n' > "$tty"
+  printf '%s\n' "$title" > "$tty"
   printf '  ↑/↓ move · space toggle · a select all · enter confirm · q cancel\n\n' > "$tty"
   printf '\033[?25l' > "$tty"   # hide cursor
   draw_menu
@@ -157,35 +269,41 @@ interactive_select() {
 
   i=0
   while [ "$i" -lt "$n" ]; do
-    if [ "${checked[i]}" -eq 1 ]; then printf '%s ' "${items[i]}"; fi
+    if [ "${checked[i]}" -eq 1 ]; then printf '%s\n' "${items[i]}"; fi
     i=$((i + 1))
   done
 }
 
 usage() {
   cat <<EOF
-Install agent-skills (from https://github.com/$REPO) into: $DEST_DIR
+Install agent-skills (from https://github.com/$REPO) into your coding agents'
+skills directories. Detects installed agents and asks which to target.
 
 Usage:
   curl -fsSL https://raw.githubusercontent.com/$REPO/$BRANCH/install.sh | bash
   curl -fsSL https://raw.githubusercontent.com/$REPO/$BRANCH/install.sh | bash -s -- --all
-  curl -fsSL https://raw.githubusercontent.com/$REPO/$BRANCH/install.sh | bash -s -- finalize-feature
+  curl -fsSL https://raw.githubusercontent.com/$REPO/$BRANCH/install.sh | bash -s -- --all-agents --all
 
   ./install.sh [options] [skill ...]
 
 Options:
-  --all         Install every skill without prompting
-  --uninstall   Remove installed skills (named ones, or all if none named)
-  --dry-run     Print what would happen without touching the filesystem
-  --dir PATH    Install into PATH instead of $DEST_DIR
-  -h, --help    Show this help
+  --all           Install every skill without prompting
+  --agent ID      Target a specific agent (repeatable). See ids below.
+  --all-agents    Target every detected agent without prompting
+  --uninstall     Remove installed skills (named ones, or all if none named)
+  --dry-run       Print what would happen without touching the filesystem
+  --dir PATH      Install into PATH directly, skipping agent detection
+  -h, --help      Show this help
+
+Known agents (id -> skills dir):
+$(printf '%s\n' "$AGENTS" | awk -F'|' '{printf "  - %-9s %s (~/%s)\n", $1, $2, $5}')
 
 Available skills:
 $(list_available | sed 's/^/  - /')
 
 Override the target dir with CLAUDE_SKILLS_DIR=/path or --dir PATH.
 
-Skills load when Claude Code starts, so restart your session afterwards.
+Skills load when an agent starts, so restart it afterwards.
 Updating a skill just means re-running the command above.
 EOF
 }
@@ -238,43 +356,88 @@ uninstall_one() {
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --all)       ALL=1 ;;
-    --uninstall) MODE="uninstall" ;;
-    --dry-run)   DRY_RUN=1 ;;
+    --all)        ALL=1 ;;
+    --all-agents) ALL_AGENTS=1 ;;
+    --uninstall)  MODE="uninstall" ;;
+    --dry-run)    DRY_RUN=1 ;;
+    --agent)
+      shift
+      if [ $# -eq 0 ]; then
+        echo "error: --agent requires an id argument" >&2
+        exit 1
+      fi
+      AGENT_ARGS="$AGENT_ARGS $1"
+      ;;
     --dir)
       shift
       if [ $# -eq 0 ]; then
         echo "error: --dir requires a path argument" >&2
         exit 1
       fi
-      DEST_DIR="$1"
+      EXPLICIT_DIR="$1"
       ;;
-    -h|--help)   usage; exit 0 ;;
-    -*)          echo "unknown option: $1" >&2; usage; exit 1 ;;
-    *)           NAMES="$NAMES $1" ;;
+    -h|--help)    usage; exit 0 ;;
+    -*)           echo "unknown option: $1" >&2; usage; exit 1 ;;
+    *)            NAMES="$NAMES $1" ;;
   esac
   shift
 done
 
-fetch_tree
-AVAILABLE="$(list_available)"
+# Install/uninstall every selected skill into DEST_DIR, with a labelled header.
+install_into() {
+  DEST_DIR="$2"
+  header="Installing into $1 ($2):"
+  if [ "$DRY_RUN" = "1" ]; then header="[dry-run] $header"; fi
+  echo "$header"
+  for s in $NAMES; do install_one "$s"; done
+}
 
-if [ "$MODE" = "uninstall" ]; then
-  if [ -z "${NAMES# }" ]; then NAMES="$AVAILABLE"; fi
-  header="Uninstalling from $DEST_DIR:"
+uninstall_from() {
+  DEST_DIR="$2"
+  header="Uninstalling from $1 ($2):"
   if [ "$DRY_RUN" = "1" ]; then header="[dry-run] $header"; fi
   echo "$header"
   for s in $NAMES; do uninstall_one "$s"; done
-  echo "Done. Restart Claude Code to unload them."
+}
+
+# Run an action ("install_into"/"uninstall_from") for each resolved target: the
+# explicit --dir/env override, or one per chosen agent.
+for_each_target() {
+  fn="$1"
+  if [ -n "$EXPLICIT_DIR" ]; then
+    "$fn" "custom directory" "$EXPLICIT_DIR"
+    return
+  fi
+  for aid in $AGENT_IDS; do
+    "$fn" "$(agent_name "$aid")" "$HOME/$(agent_skilldir "$aid")"
+  done
+}
+
+fetch_tree
+AVAILABLE="$(list_available)"
+
+# Resolve target agents (unless an explicit directory was given).
+if [ -z "$EXPLICIT_DIR" ]; then
+  resolve_agents
+  if [ -z "${AGENT_IDS# }" ]; then
+    echo "No agent selected. Exiting."
+    exit 0
+  fi
+fi
+
+if [ "$MODE" = "uninstall" ]; then
+  if [ -z "${NAMES# }" ]; then NAMES="$AVAILABLE"; fi
+  for_each_target uninstall_from
+  echo "Done. Restart the affected agents to unload them."
   exit 0
 fi
 
-# install mode
+# install mode: resolve which skills to install
 if [ -z "${NAMES# }" ]; then
   if [ "$ALL" = "1" ]; then
     NAMES="$AVAILABLE"
   elif [ -r /dev/tty ]; then
-    NAMES="$(interactive_select $AVAILABLE)"
+    NAMES="$(interactive_select "Select skills to install:" $AVAILABLE)"
   else
     echo "No skills specified. Pass names, use --all, or run interactively." >&2
     echo "Under curl, pass flags after --, e.g.: curl -fsSL <url> | bash -s -- --all" >&2
@@ -287,8 +450,5 @@ if [ -z "${NAMES# }" ]; then
   exit 0
 fi
 
-header="Installing into $DEST_DIR:"
-if [ "$DRY_RUN" = "1" ]; then header="[dry-run] $header"; fi
-echo "$header"
-for s in $NAMES; do install_one "$s"; done
-echo "Done. Restart Claude Code, then invoke e.g. /finalize-feature"
+for_each_target install_into
+echo "Done. Restart the affected agents, then invoke e.g. /finalize-feature"

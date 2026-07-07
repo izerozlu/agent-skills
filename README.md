@@ -1,6 +1,6 @@
 # agent-skills
 
-A personal collection of [Claude Code](https://claude.com/claude-code) skills
+A personal collection of agent skills
 for wrapping up features. They install as **standalone skills**, so you invoke
 them by their bare names, `/finalize-feature`, `/commit-in-logical-groups`,
 `/generate-feature-documentation`, with no plugin prefix.
@@ -18,41 +18,51 @@ commit).
 
 ## Install
 
-Run the installer straight from GitHub. It downloads the skills you choose into
-`~/.claude/skills/`, no clone required.
+Run the installer straight from GitHub, no clone required. It detects the coding
+agents on your system and asks which of them to install into, then which skills
+to install. Supported agents and their skills directories:
+
+| Agent | id | Skills directory |
+|-------|----|------------------|
+| Claude Code | `claude` | `~/.claude/skills` |
+| OpenAI Codex | `codex` | `~/.codex/skills` |
+| Gemini CLI | `gemini` | `~/.gemini/skills` |
+| Cline | `cline` | `~/.cline/skills` |
+| GitHub Copilot CLI | `copilot` | `~/.copilot/skills` |
+| opencode | `opencode` | `~/.config/opencode/skills` |
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash
 ```
 
-That runs interactively, prompting per skill. Pass flags and skill names after
-`-- ` to skip the prompts:
+That runs interactively: pick the target agents from a menu, then the skills.
+Pass flags and skill names after `-- ` to skip the prompts:
 
 ```bash
-# install everything
-curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --all
+# every skill into every detected agent
+curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --all-agents --all
 
-# install specific skills
-curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- finalize-feature commit-in-logical-groups
+# specific skills into a specific agent (--agent is repeatable)
+curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --agent claude finalize-feature commit-in-logical-groups
 
 # preview without touching the filesystem
-curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --dry-run --all
+curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --all-agents --dry-run --all
 
 # remove installed skills (all, or named)
-curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --all-agents --uninstall
 ```
 
 If you have cloned the repo, the same script works locally:
 
 ```bash
-./install.sh                 # interactive: choose per skill
-./install.sh --all           # install everything
-./install.sh finalize-feature commit-in-logical-groups
-./install.sh --uninstall     # remove installed skills
+./install.sh                          # interactive: pick agents, then skills
+./install.sh --all-agents --all       # every skill into every detected agent
+./install.sh --agent claude finalize-feature
+./install.sh --uninstall              # remove installed skills
 ```
 
-Restart Claude Code after installing so it picks up the new skills, then invoke
-them:
+Restart the affected agents after installing so they pick up the new skills, then
+invoke them:
 
 ```
 /finalize-feature
@@ -69,13 +79,13 @@ There is no local clone to `git pull`. Updating is just re-running the same
 install command, which re-downloads the latest skill files:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --all
+curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --all-agents --all
 ```
 
 ## Manual install
 
-If you prefer not to run the script, copy any skill folder straight into your
-skills directory:
+If you prefer not to run the script, copy any skill folder straight into an
+agent's skills directory (see the table above for each agent's path):
 
 ```bash
 cp -R skills/finalize-feature ~/.claude/skills/
