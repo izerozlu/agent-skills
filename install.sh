@@ -21,6 +21,11 @@
 #   ./install.sh --uninstall     # remove installed skills (all, or named)
 #   ./install.sh --dry-run --all # show what would happen, touch nothing
 #
+# For a coding agent (non-interactive): pass --yes to skip every prompt. With
+# no other flags it installs all skills into all detected agents and never
+# blocks on a menu. --yes is implied in CI or when there is no terminal.
+#   curl -fsSL .../install.sh | bash -s -- --yes
+#
 # Installing downloads the skill files. Updating means re-running the same
 # command again. There is no local clone to git pull.
 #
@@ -61,6 +66,7 @@ ALL=0
 ALL_AGENTS=0
 MODE="install"
 DRY_RUN=0
+YES=0
 NAMES=""
 AGENT_ARGS=""
 AGENT_IDS=""
@@ -182,7 +188,7 @@ resolve_agents() {
     return
   fi
 
-  if [ -r /dev/tty ]; then
+  if [ "$NONINTERACTIVE" = "0" ]; then
     name_arr=()
     for id in $detected; do name_arr+=("$(agent_name "$id")"); done
     sel="$(interactive_select "Select coding agents to install skills into:" "${name_arr[@]}")"
@@ -192,11 +198,8 @@ resolve_agents() {
       if printf '%s\n' "$sel" | grep -qxF "$nm"; then AGENT_IDS="$AGENT_IDS $id"; fi
     done
   else
-    if printf '%s\n' "$detected" | grep -qx claude; then
-      AGENT_IDS="claude"
-    else
-      AGENT_IDS="$detected"
-    fi
+    # Non-interactive: target every detected agent.
+    AGENT_IDS="$detected"
   fi
 }
 
@@ -232,7 +235,8 @@ interactive_select() {
   draw_menu
 
   while true; do
-    IFS= read -rsn1 key < "$tty" || break
+    # -t is a backstop: an unattended menu cancels instead of hanging forever.
+    IFS= read -rsn1 -t 120 key < "$tty" || break
     if [ "$key" = "$esc" ]; then
       read -rsn2 -t 0.01 rest < "$tty" || rest=""
       key="$key$rest"
@@ -290,6 +294,8 @@ Options:
   --all           Install every skill without prompting
   --agent ID      Target a specific agent (repeatable). See ids below.
   --all-agents    Target every detected agent without prompting
+  -y, --yes       Non-interactive: never prompt. With no other flags, install
+                  all skills into all detected agents. (Implied in CI / no TTY.)
   --uninstall     Remove installed skills (named ones, or all if none named)
   --dry-run       Print what would happen without touching the filesystem
   --dir PATH      Install into PATH directly, skipping agent detection
@@ -360,6 +366,7 @@ while [ $# -gt 0 ]; do
     --all-agents) ALL_AGENTS=1 ;;
     --uninstall)  MODE="uninstall" ;;
     --dry-run)    DRY_RUN=1 ;;
+    -y|--yes)     YES=1 ;;
     --agent)
       shift
       if [ $# -eq 0 ]; then
@@ -382,6 +389,15 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+
+# Run without any prompts (and so without ever blocking on a menu) when asked
+# with --yes, in CI, or when there is no terminal to read from. This is the
+# path a coding agent should use: `... | bash -s -- --yes` installs every skill
+# into every detected agent, deterministically and without hanging.
+NONINTERACTIVE=0
+if [ "$YES" = "1" ] || [ -n "${CI:-}" ] || [ ! -r /dev/tty ]; then
+  NONINTERACTIVE=1
+fi
 
 # Install/uninstall every selected skill into DEST_DIR, with a labelled header.
 install_into() {
@@ -436,12 +452,11 @@ fi
 if [ -z "${NAMES# }" ]; then
   if [ "$ALL" = "1" ]; then
     NAMES="$AVAILABLE"
-  elif [ -r /dev/tty ]; then
+  elif [ "$NONINTERACTIVE" = "0" ]; then
     NAMES="$(interactive_select "Select skills to install:" $AVAILABLE)"
   else
-    echo "No skills specified. Pass names, use --all, or run interactively." >&2
-    echo "Under curl, pass flags after --, e.g.: curl -fsSL <url> | bash -s -- --all" >&2
-    exit 1
+    # Non-interactive with nothing named: install every skill.
+    NAMES="$AVAILABLE"
   fi
 fi
 

@@ -16,6 +16,22 @@ them by their bare names, `/finalize-feature`, `/commit-in-logical-groups`,
 `finalize-feature` runs the other two as a single wrap-up flow (document, then
 commit).
 
+## Install via your coding agent
+
+Want the agent you're already talking to install these for you? Copy the block
+below into its conversation. The `--yes` flag makes the installer fully
+non-interactive (no menus, never blocks on a prompt), which is what lets an agent
+run it unattended:
+
+```text
+Please install the agent-skills feature-wrap-up skills by running:
+curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --yes
+This installs every skill into every coding agent detected on this machine. When it finishes, restart so the new skills load.
+```
+
+Scope it if you don't want all of them, for example
+`bash -s -- --yes --agent claude finalize-feature` for a single skill and agent.
+
 ## Install
 
 Run the installer straight from GitHub, no clone required. It detects the coding
