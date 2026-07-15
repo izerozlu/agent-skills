@@ -18,7 +18,7 @@ changes under `docs/features/`, then **(2) commit** everything in logical groups
 
 ## Phase 1: Generate Feature Documentation
 
-### 1.1 Inspect uncommitted changes
+### 1.1 Inspect changes
 
 From the repository root, inspect both staged and unstaged changes:
 
@@ -32,6 +32,15 @@ git diff --cached
 
 Also inspect relevant untracked files (`cat <untracked-file>`). Do not modify or
 revert unrelated user changes.
+
+IF there's no changes staged or unstaged, look for the diff between the current branch
+and the main branch:
+
+```bash
+git fetch origin main
+git diff origin/main...HEAD --stat
+git diff origin/main...HEAD
+```
 
 ### 1.2 Understand the feature
 

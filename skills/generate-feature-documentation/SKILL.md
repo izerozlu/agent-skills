@@ -31,6 +31,16 @@ git diff --cached
 Also inspect new untracked files that are relevant to the feature. Do not modify
 or revert unrelated user changes.
 
+
+IF there's no changes staged or unstaged, look for the diff between the current branch
+and the main branch:
+
+```bash
+git fetch origin main
+git diff origin/main...HEAD --stat
+git diff origin/main...HEAD
+```
+
 ### Step 2: Understand the Feature
 
 Identify:
