@@ -1,9 +1,10 @@
 # agent-skills
 
 A personal collection of agent skills
-for wrapping up features. They install as **standalone skills**, so you invoke
-them by their bare names, `/finalize-feature`, `/commit-in-logical-groups`,
-`/generate-feature-documentation`, with no plugin prefix.
+for wrapping up and delivering features. They install as **standalone skills**,
+so you invoke them by their bare names, `/finalize-feature`,
+`/commit-in-logical-groups`, `/generate-feature-documentation`,
+`/orchestrated-delivery`, with no plugin prefix.
 
 ## Skills
 
@@ -12,9 +13,11 @@ them by their bare names, `/finalize-feature`, `/commit-in-logical-groups`,
 | `finalize-feature` | Wrap up a completed feature: document the uncommitted diff under `docs/features/`, then commit everything in logical thematic groups. |
 | `generate-feature-documentation` | Inspect uncommitted changes and write a concise feature-status doc under `docs/features/`, without committing. |
 | `commit-in-logical-groups` | Split pending changes into separate, focused commits grouped by theme, one commit per reason to change. |
+| `orchestrated-delivery` | Deliver a multi-part feature by orchestrating sub-agents end to end: parallel implementation in isolated worktrees, then independent code reviews, then targeted fixes. |
 
-`finalize-feature` runs the other two as a single wrap-up flow (document, then
-commit).
+`finalize-feature` runs the first two as a single wrap-up flow (document, then
+commit). `orchestrated-delivery` is a separate flow for delivering a plan or
+spec across several repos, services, or modules with sub-agents.
 
 ## Install via your coding agent
 
@@ -84,6 +87,7 @@ invoke them:
 /finalize-feature
 /generate-feature-documentation
 /commit-in-logical-groups
+/orchestrated-delivery
 ```
 
 Claude also triggers a skill automatically when your request matches its
@@ -115,7 +119,8 @@ agent-skills/
 └── skills/
     ├── finalize-feature/SKILL.md
     ├── generate-feature-documentation/SKILL.md
-    └── commit-in-logical-groups/SKILL.md
+    ├── commit-in-logical-groups/SKILL.md
+    └── orchestrated-delivery/SKILL.md
 ```
 
 ## License
