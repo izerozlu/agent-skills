@@ -1,6 +1,6 @@
 ---
 name: orchestrated-delivery
-description: Deliver a multi-part feature by orchestrating sub-agents end to end - parallel implementation in isolated worktrees, then independent code reviews, then targeted fixes. Use when the user wants a plan/spec implemented across several repos, services, or modules with sub-agents, asks to "orchestrate", "parallelize", "use sub-agents", or run implement-then-review as one flow.
+description: Deliver a large, multi-part feature by acting purely as an orchestrator of sub-agents from decomposition through delivery - split the work into non-overlapping units, implement them in parallel in isolated git worktrees (worker agents), review each unit independently as it lands (reviewer agents), run a dedicated standards-compliance audit, dispatch targeted fixes, then consolidate a final report. The orchestrator coordinates and verifies but does not write feature code itself. Use when the user wants a plan or spec implemented across several repos, services, or modules with sub-agents; asks to "orchestrate", "parallelize", "use sub-agents", "fan out", or "divide and conquer"; or wants an implement-then-review-then-fix flow run end to end. Not for single-unit changes one agent can do directly.
 argument-hint: "plan/spec path(s), branch name, and any model tiers"
 ---
 
@@ -58,12 +58,25 @@ As each implementation agent reports, launch a reviewer sub-agent on that unit. 
 - Any risk areas the implementation report flagged as guessed.
 - Output: findings ranked most-severe first, each with severity (blocker/important/minor/nit), file:line, concrete problem, one-line fix. Verify each claim against real code; drop plausible-but-unreal issues.
 
-## Phase 3 - Fix (worker agents, for important findings only)
+## Phase 3 - Standards compliance audit (per unit, as reviews finish)
 
-- Consolidate findings across reviews. For **blocker/important** findings, dispatch worker sub-agents into the **same worktrees**, scoped narrowly to those findings. Keep unit boundaries non-overlapping.
+Even though Phase 2 carries a Standards axis, run a **dedicated pass** that confirms the new changes actually follow the target repo's own instruction sets. Reviews focused on correctness and spec often skim project conventions; this step exists so documented house rules are never silently broken.
+
+For each unit, dispatch a check (a reviewer sub-agent, or fold it into the Phase 2 reviewer's prompt as a distinct section) that MUST:
+
+- **Locate the governing instruction sets**: this repo's `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `.editorconfig`, linter/formatter configs (`.golangci.yml`, `.eslintrc`, `ruff.toml`, etc.), and any `docs/` conventions or feature docs that state a standard. Read the ones in the file's own directory too - local files override root.
+- **Check the unit's diff against each stated rule**, not against generic best practice. Quote the specific rule (file:line of the instruction) next to each violation so the finding is traceable, not opinion.
+- **Cover conventions that automated linters miss**: architectural rules (e.g. no single-implementation interface seams between own layers), naming, error-handling patterns, test placement, comment/doc requirements, commit and doc formatting rules.
+- **Report** each violation with: the rule source (instruction file:line), the offending code (file:line), the concrete fix, and severity. Treat a clear documented-rule break as **blocker/important** for Phase 4, not a nit.
+
+If an instruction set and the existing code disagree, surface the conflict rather than silently picking one.
+
+## Phase 4 - Fix (worker agents, for important findings only)
+
+- Consolidate findings across reviews **and the Phase 3 standards audit**. For **blocker/important** findings, dispatch worker sub-agents into the **same worktrees**, scoped narrowly to those findings. Keep unit boundaries non-overlapping.
 - Skip minors/nits unless the user wants them, but report them.
 - After fixes, re-verify (typecheck/lint/tests) and, if the branch was pushed, push the fix commits.
 
-## Phase 4 - Report
+## Phase 5 - Report
 
-Give the user an actionable summary: per unit - branch, worktree path, commit hashes, push/upstream state, test results; the consolidated review verdict; what was fixed vs left as noted minors; and the next command if one is needed (integration check, PR, merge). Keep paths and commands exact.
+Give the user an actionable summary: per unit - branch, worktree path, commit hashes, push/upstream state, test results; the consolidated review verdict; the **standards compliance verdict** (per unit: clean, or the documented-rule violations found and whether each was fixed, with the rule source cited); what was fixed vs left as noted minors; and the next command if one is needed (integration check, PR, merge). Keep paths and commands exact.

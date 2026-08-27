@@ -13,7 +13,7 @@ so you invoke them by their bare names, `/finalize-feature`,
 | `finalize-feature` | Wrap up a completed feature: document the uncommitted diff under `docs/features/`, then commit everything in logical thematic groups. |
 | `generate-feature-documentation` | Inspect uncommitted changes and write a concise feature-status doc under `docs/features/`, without committing. |
 | `commit-in-logical-groups` | Split pending changes into separate, focused commits grouped by theme, one commit per reason to change. |
-| `orchestrated-delivery` | Deliver a multi-part feature by orchestrating sub-agents end to end: parallel implementation in isolated worktrees, then independent code reviews, then targeted fixes. |
+| `orchestrated-delivery` | Deliver a large, multi-part feature as a pure orchestrator of sub-agents: split into non-overlapping units, implement them in parallel in isolated worktrees, review each unit as it lands, run a dedicated standards-compliance audit, dispatch targeted fixes, then consolidate a final report. The orchestrator coordinates and verifies but does not write feature code itself. |
 
 `finalize-feature` runs the first two as a single wrap-up flow (document, then
 commit). `orchestrated-delivery` is a separate flow for delivering a plan or
