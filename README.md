@@ -19,65 +19,25 @@ so you invoke them by their bare names, `/finalize-feature`,
 commit). `orchestrated-delivery` is a separate flow for delivering a plan or
 spec across several repos, services, or modules with sub-agents.
 
-## Install via your coding agent
-
-Want the agent you're already talking to install these for you? Copy the block
-below into its conversation. The `--yes` flag makes the installer fully
-non-interactive (no menus, never blocks on a prompt), which is what lets an agent
-run it unattended:
-
-```text
-Please install the agent-skills feature-wrap-up skills by running:
-curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --yes
-This installs every skill into every coding agent detected on this machine. When it finishes, restart so the new skills load.
-```
-
-Scope it if you don't want all of them, for example
-`bash -s -- --yes --agent claude finalize-feature` for a single skill and agent.
-
 ## Install
 
-Run the installer straight from GitHub, no clone required. It detects the coding
-agents on your system and asks which of them to install into, then which skills
-to install. Supported agents and their skills directories:
-
-| Agent | id | Skills directory |
-|-------|----|------------------|
-| Claude Code | `claude` | `~/.claude/skills` |
-| OpenAI Codex | `codex` | `~/.codex/skills` |
-| Gemini CLI | `gemini` | `~/.gemini/skills` |
-| Cline | `cline` | `~/.cline/skills` |
-| GitHub Copilot CLI | `copilot` | `~/.copilot/skills` |
-| opencode | `opencode` | `~/.config/opencode/skills` |
+Install with the [`skills`](https://github.com/vercel-labs/skills) CLI. No clone
+is needed. It finds every `SKILL.md` under `skills/`, detects the coding agents
+on your machine (Claude Code, Codex, Gemini CLI, Cursor, Cline, Copilot,
+opencode, and more), and asks where to install:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash
-```
+# list the available skills
+npx skills add izerozlu/agent-skills --list
 
-That runs interactively: pick the target agents from a menu, then the skills.
-Pass flags and skill names after `-- ` to skip the prompts:
+# install all of them (interactive: pick agents)
+npx skills add izerozlu/agent-skills
 
-```bash
-# every skill into every detected agent
-curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --all-agents --all
+# install one skill only
+npx skills add izerozlu/agent-skills --skill finalize-feature
 
-# specific skills into a specific agent (--agent is repeatable)
-curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --agent claude finalize-feature commit-in-logical-groups
-
-# preview without touching the filesystem
-curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --all-agents --dry-run --all
-
-# remove installed skills (all, or named)
-curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --all-agents --uninstall
-```
-
-If you have cloned the repo, the same script works locally:
-
-```bash
-./install.sh                          # interactive: pick agents, then skills
-./install.sh --all-agents --all       # every skill into every detected agent
-./install.sh --agent claude finalize-feature
-./install.sh --uninstall              # remove installed skills
+# no prompts: every skill into every detected agent
+npx skills add izerozlu/agent-skills -y
 ```
 
 Restart the affected agents after installing so they pick up the new skills, then
@@ -93,19 +53,30 @@ invoke them:
 Claude also triggers a skill automatically when your request matches its
 description (for example, "finalize this feature").
 
+## Install via your coding agent
+
+Want the agent you're already talking to install these for you? Copy the block
+below into its conversation. The `-y` flag makes the CLI fully non-interactive,
+which is what lets an agent run it unattended:
+
+```text
+Please install the agent-skills feature-wrap-up skills by running:
+npx skills add izerozlu/agent-skills -y
+This installs every skill into every coding agent detected on this machine. When it finishes, restart so the new skills load.
+```
+
 ## Updating
 
-There is no local clone to `git pull`. Updating is just re-running the same
-install command, which re-downloads the latest skill files:
+Re-run the same install command. The CLI re-downloads the latest skill files:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/izerozlu/agent-skills/main/install.sh | bash -s -- --all-agents --all
+npx skills add izerozlu/agent-skills -y
 ```
 
 ## Manual install
 
-If you prefer not to run the script, copy any skill folder straight into an
-agent's skills directory (see the table above for each agent's path):
+If you prefer not to use the CLI, copy any skill folder straight into an
+agent's skills directory (for Claude Code that is `~/.claude/skills`):
 
 ```bash
 cp -R skills/finalize-feature ~/.claude/skills/
@@ -115,7 +86,6 @@ cp -R skills/finalize-feature ~/.claude/skills/
 
 ```
 agent-skills/
-├── install.sh
 └── skills/
     ├── finalize-feature/SKILL.md
     ├── generate-feature-documentation/SKILL.md
