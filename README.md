@@ -13,7 +13,7 @@ so you invoke them by their bare names, `/finalize-feature`,
 | `finalize-feature` | Wrap up a completed feature: document the uncommitted diff under `docs/features/`, then commit everything in logical thematic groups. |
 | `generate-feature-documentation` | Inspect uncommitted changes and write a concise feature-status doc under `docs/features/`, without committing. |
 | `commit-in-logical-groups` | Split pending changes into separate, focused commits grouped by theme, one commit per reason to change. |
-| `orchestrated-delivery` | Deliver a large, multi-part feature as a pure orchestrator of sub-agents: split into non-overlapping units, implement them in parallel in isolated worktrees, review each unit as it lands, run a dedicated standards-compliance audit, dispatch targeted fixes, then consolidate a final report. The orchestrator coordinates and verifies but does not write feature code itself. |
+| `orchestrated-delivery` | Deliver a multi-part feature by orchestrating sub-agents: implement units in parallel in isolated worktrees, review and standards-audit each unit as it lands, fix the important findings, then report. Optional human review at the end. |
 
 `finalize-feature` runs the first two as a single wrap-up flow (document, then
 commit). `orchestrated-delivery` is a separate flow for delivering a plan or
@@ -82,6 +82,31 @@ agent's skills directory (for Claude Code that is `~/.claude/skills`):
 cp -R skills/finalize-feature ~/.claude/skills/
 ```
 
+## Sub-agents for orchestrated-delivery
+
+`orchestrated-delivery` uses three Claude Code sub-agents: `delivery-worker`,
+`delivery-reviewer`, and `delivery-standards-auditor`. Their definitions ship
+inside the skill at `skills/orchestrated-delivery/agents/`. The `skills` CLI
+installs the skill folder but does not register the agents, so copy them into an
+agents directory:
+
+```bash
+# all projects
+mkdir -p ~/.claude/agents
+cp skills/orchestrated-delivery/agents/*.md ~/.claude/agents/
+
+# one project only (run from that project's root)
+mkdir -p .claude/agents
+cp /path/to/agent-skills/skills/orchestrated-delivery/agents/*.md .claude/agents/
+```
+
+If you installed with `npx skills`, copy them from the installed skill folder
+instead, for example `~/.claude/skills/orchestrated-delivery/agents/`.
+
+Restart Claude Code so the agents load. If they are missing, the skill offers to
+install them and, for that run, falls back to general-purpose sub-agents with the
+same instructions.
+
 ## Repository layout
 
 ```
@@ -90,7 +115,10 @@ agent-skills/
     ├── finalize-feature/SKILL.md
     ├── generate-feature-documentation/SKILL.md
     ├── commit-in-logical-groups/SKILL.md
-    └── orchestrated-delivery/SKILL.md
+    └── orchestrated-delivery/
+        ├── SKILL.md
+        ├── agents/          # delivery-worker, -reviewer, -standards-auditor
+        └── references/      # human-review.md
 ```
 
 ## License
