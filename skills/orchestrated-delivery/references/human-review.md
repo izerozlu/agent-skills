@@ -6,7 +6,7 @@ Run the review from one **review state file**. This file is the source of truth 
 
 **Location:** `<repo-root>/docs/human-review/YYYYMMDD_<slug>.md`. Use the repo that holds the plan or spec. If no repo fits (for example, the plan is outside all target repos), ask the user where to put it.
 
-**Gitignore:** before you create the file, make sure `docs/human-review/` is in that repo's `.gitignore`. If it is not, add the line `docs/human-review/`. Never commit the state file.
+**Gitignore:** before you create the file, make sure `docs/human-review/` is in that repo's `.gitignore`. If it is not, add the line `docs/human-review/` and commit that change, so the tree stays clean.
 
 **Resume:** at the start, check `docs/human-review/` for an existing file on the same feature. If one exists, read it and continue from it. Do not ask again about items that are already complete.
 
