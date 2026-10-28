@@ -37,8 +37,8 @@ Give each Agent call a `description` that names the unit and role, for example `
 
 - Split work into **non-overlapping units**. Never let two sub-agents touch the same files or overlapping scope. A repo, service, or independent module is a natural unit.
 - Each unit works in its **own isolated worktree**. Create worktrees repo-local at `.worktrees/<branch-name>` (add `.worktrees` to `.gitignore` first if not ignored). Do not place worktrees as siblings of the repo.
-- All feature branches are **based from the base branch** (`main` unless told otherwise). Set each branch's **upstream to itself** (the feature branch), never to the base.
-- **Never** push to `main`/`master`, never force-push, never merge.
+- All feature branches are **based from the base branch** (`main` unless told otherwise).
+- **Do not push.** Branches stay local; the user pushes later. Never force-push, never merge.
 - No `Co-Authored-By` lines in commits. No em dashes in commit messages, PR bodies, or docs.
 - **Parallelize aggressively.** Launch independent unit agents in a single batch so they run concurrently. Do not serialize independent work.
 - Speed never trades away quality: same rigor, same verification, same "done means done".
@@ -47,7 +47,7 @@ Give each Agent call a `description` that names the unit and role, for example `
 ## Phase 0 - Decompose and set up
 
 1. Read the plan and spec. Identify the work units and the **cross-unit contracts** (API shapes, field names, event payloads, shared types). Write these contracts down explicitly - they are what parallel agents get wrong.
-2. Check each target repo's git state: on base branch, clean tree, remote present, base branch exists.
+2. Check each target repo's git state: on base branch, clean tree, base branch exists.
 3. Create one worktree + feature branch per unit, from the base branch. Do this yourself (deterministic) rather than making agents run git plumbing.
 
 ## Phases 1-3 - Implement, review, fix
