@@ -32,14 +32,15 @@ The orchestrator gives you the worktree, branch, plan slice (or review findings 
 
 - Commit on the feature branch that is checked out in the worktree. Name files explicitly in `git add`; never `git add -A` or `git add .`.
 - Make each commit a feasible atomic work package: one logical change, complete on its own (build, lint, and tests pass at that commit), with its tests in the same commit, and no mixed refactor/format/behavior changes.
-- Commit subject: `<type>(<topic>): <brief explanation>`, at most 72 characters.
+- Commit format, first match wins:
+  1. The format the repo documents (`AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, or a commitlint config).
+  2. The format that recent commits use.
+  3. The default below.
+- Default commit subject: `<type>(<topic>): <brief explanation>`, at most 72 characters.
   - `type`: one of `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `style`, `build`, `ci`.
   - `topic`: the area the commit touches (module, service, or feature), lowercase, short.
   - `brief explanation`: imperative mood, lowercase start, no trailing period.
   - Add a body only when the "why" is not obvious.
-- If the repo documents its own commit format (`AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, or a commitlint config), the repo's format wins.
-- If the repo does not document a commit format and previous commits have a certain commit format, follow that.
-- Otherwise always follow above mentioned "Commit subject" rules.
 - Never commit to, push to, or merge into `main`/`master`. Never force-push. Never merge.
 - No `Co-Authored-By` lines. No em dashes in commit messages or docs.
 
