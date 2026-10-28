@@ -1,7 +1,7 @@
 ---
 name: orchestrated-delivery
-description: Deliver a large, multi-part feature by acting purely as an orchestrator of sub-agents from decomposition through delivery - split the work into non-overlapping units, implement them in parallel in isolated git worktrees (worker agents), review each unit independently as it lands (reviewer agents), run a dedicated standards-compliance audit, dispatch targeted fixes, then consolidate a final report. The orchestrator coordinates and verifies but does not write feature code itself. Use when the user wants a plan or spec implemented across several repos, services, or modules with sub-agents; asks to "orchestrate", "parallelize", "use sub-agents", "fan out", or "divide and conquer"; or wants an implement-then-review-then-fix flow run end to end. Not for single-unit changes one agent can do directly.
-argument-hint: "plan/spec path(s), branch name, and any model tiers"
+description: Deliver a multi-part feature by orchestrating sub-agents end to end. Use when the user wants a plan/spec implemented across several repos, services, or modules with sub-agents, asks to "orchestrate", "parallelize", "use sub-agents", or run implement-then-review as one flow.
+argument-hint: "plan/spec path(s), branch name"
 ---
 
 # Orchestrated Delivery
@@ -14,10 +14,24 @@ Expect some of these from the invocation (ask only for what is missing and canno
 
 - A **plan** and/or a **spec** file. The plan drives work separation; the spec gives big-picture context. Read both fully before decomposing.
 - A **branch name** for the feature (default: derive one, e.g. `feat/<slug>`).
-- **Model tiers** (defaults below; honor any override):
-  - worker (implementation + fixes): a mid-tier reasoning model at medium effort (e.g. Sonnet).
-  - reviewer: a high-tier reasoning model at medium effort (e.g. Opus).
 - **Base branch** (default `main`).
+
+## Agents
+
+Use these predefined agents. Always launch them by `subagent_type`. Do not use `general-purpose` for these roles.
+
+- `delivery-worker`: implements a unit, or fixes findings in it. Read + write, commits.
+- `delivery-reviewer`: Spec + contract-seam review. Read-only.
+- `delivery-standards-auditor`: documented-rule compliance audit. Read-only.
+
+Each agent already holds its standing instructions (standards discovery, TDD, verification, git rules, report format, severity scale). Your prompts carry only the **per-unit data** listed in the phases below. Do not repeat the standing instructions in the prompt.
+
+The agent definitions ship with this skill in [agents/](agents/). If an agent type is not available:
+
+- Offer to install them: copy `agents/*.md` into `.claude/agents/` (this project) or `~/.claude/agents/` (all projects). Installed agents load in the next session.
+- For this run, fall back to `general-purpose` and paste the body of the matching file (for example `agents/delivery-worker.md`) into the prompt.
+
+Give each Agent call a `description` that names the unit and role, for example `worker: billing-api` or `review: billing-api`, so the user can tell agents apart.
 
 ## Rules (hard constraints)
 
@@ -36,47 +50,25 @@ Expect some of these from the invocation (ask only for what is missing and canno
 2. Check each target repo's git state: on base branch, clean tree, remote present, base branch exists.
 3. Create one worktree + feature branch per unit, from the base branch. Do this yourself (deterministic) rather than making agents run git plumbing.
 
-## Phase 1 - Implement (worker agents, parallel)
+## Phases 1-3 - Implement, review, fix
 
-Launch one worker sub-agent per unit, all in one batch. Each prompt MUST include:
+Every prompt carries the unit's **absolute worktree path**, **branch**, and **base branch**, plus:
 
-- The **absolute worktree path**; instruct the agent to work only there, using absolute paths (a sub-agent cannot persist `cd`).
-- Its **slice of the plan** plus the **spec** for big-picture context, and the **fixed cross-unit contracts** verbatim, so parallel units agree on names/shapes.
-- **Standards discovery**: read this repo's `AGENTS.md`/`CLAUDE.md`/`CONTRIBUTING.md`/`.editorconfig`/linter+formatter configs and match neighboring files; local configs override root; surface (do not silently resolve) conflicts between documented standards and existing code. Pass this instruction explicitly - do not assume the agent finds standards on its own.
-- **Tests**: follow TDD at pre-agreed seams where practical; assert behavior at the highest practical seam using existing fixture patterns; cite the spec's testing decisions if it has them.
-- **Verify before finishing**: run typecheck + lint, single relevant test files as they go, and the full suite at the end. Everything must pass.
-- **Git**: commit on the feature branch in logical thematic groups; then `push -u origin <branch>` so upstream tracks the feature branch itself. Never main/force/merge. No Co-Authored-By, no em dashes.
-- **Report back** (this is data for the orchestrator, not a user-facing note): files changed, tests + pass/fail, commit hashes, push result, and any deviations or standards conflicts. Tell the agent to flag anything it had to guess (especially cross-unit contracts).
+| Phase | Agent | Start | Extra prompt data |
+|---|---|---|---|
+| 1 Implement | `delivery-worker` | One per unit, all in one batch | Plan slice; spec (or its path); cross-unit contracts verbatim; the spec's testing decisions and TDD seams, if any; unit notes (e.g. known test commands) |
+| 2 Review | `delivery-reviewer` + `delivery-standards-auditor` | Both per unit, in parallel, as soon as that unit's worker reports | Reviewer only: plan slice; spec; cross-unit contracts; sibling worktree paths; risk areas the worker flagged as guessed |
+| 3 Fix | `delivery-worker` (fix mode) | One per unit with blocker/important findings | The exact findings to fix, each with file:line, problem, fix, and rule source for audit findings |
 
-## Phase 2 - Review (reviewer agents, as units finish)
+- Contract mismatches between units are blockers.
+- Surface rule-vs-code conflicts from the auditor to the user. Do not resolve them silently.
+- Skip minor/nit findings unless the user wants them, but report them.
+- Check each fix worker's report confirms re-verification (typecheck/lint/tests) and commits.
 
-As each implementation agent reports, launch a reviewer sub-agent on that unit. Do not wait for all units. Each review prompt MUST include:
+## Phase 4 - Report
 
-- The unit's diff against the base branch (`git -C <worktree> diff <base>...<branch>`), read-only - the reviewer reports findings, it does not edit.
-- The spec and plan slice for the **Spec** axis, and standards for the **Standards** axis.
-- **Explicit scrutiny of the cross-unit contract seams**: have the reviewer read the *other* unit's actual output (sibling worktree) and confirm the shapes match. Contract mismatches between parallel units are the highest-value finding; call them out as blockers.
-- Any risk areas the implementation report flagged as guessed.
-- Output: findings ranked most-severe first, each with severity (blocker/important/minor/nit), file:line, concrete problem, one-line fix. Verify each claim against real code; drop plausible-but-unreal issues.
+Give the user an actionable summary: per unit - branch, worktree path, commit hashes, test results; the consolidated review verdict; the **standards compliance verdict** (per unit: clean, or the documented-rule violations found and whether each was fixed, with the rule source cited); what was fixed vs left as noted minors; and the next command if one is needed (integration check, PR, merge). Keep paths and commands exact.
 
-## Phase 3 - Standards compliance audit (per unit, as reviews finish)
+## Phase 5 - Human review (optional)
 
-Even though Phase 2 carries a Standards axis, run a **dedicated pass** that confirms the new changes actually follow the target repo's own instruction sets. Reviews focused on correctness and spec often skim project conventions; this step exists so documented house rules are never silently broken.
-
-For each unit, dispatch a check (a reviewer sub-agent, or fold it into the Phase 2 reviewer's prompt as a distinct section) that MUST:
-
-- **Locate the governing instruction sets**: this repo's `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `.editorconfig`, linter/formatter configs (`.golangci.yml`, `.eslintrc`, `ruff.toml`, etc.), and any `docs/` conventions or feature docs that state a standard. Read the ones in the file's own directory too - local files override root.
-- **Check the unit's diff against each stated rule**, not against generic best practice. Quote the specific rule (file:line of the instruction) next to each violation so the finding is traceable, not opinion.
-- **Cover conventions that automated linters miss**: architectural rules (e.g. no single-implementation interface seams between own layers), naming, error-handling patterns, test placement, comment/doc requirements, commit and doc formatting rules.
-- **Report** each violation with: the rule source (instruction file:line), the offending code (file:line), the concrete fix, and severity. Treat a clear documented-rule break as **blocker/important** for Phase 4, not a nit.
-
-If an instruction set and the existing code disagree, surface the conflict rather than silently picking one.
-
-## Phase 4 - Fix (worker agents, for important findings only)
-
-- Consolidate findings across reviews **and the Phase 3 standards audit**. For **blocker/important** findings, dispatch worker sub-agents into the **same worktrees**, scoped narrowly to those findings. Keep unit boundaries non-overlapping.
-- Skip minors/nits unless the user wants them, but report them.
-- After fixes, re-verify (typecheck/lint/tests) and, if the branch was pushed, push the fix commits.
-
-## Phase 5 - Report
-
-Give the user an actionable summary: per unit - branch, worktree path, commit hashes, push/upstream state, test results; the consolidated review verdict; the **standards compliance verdict** (per unit: clean, or the documented-rule violations found and whether each was fixed, with the rule source cited); what was fixed vs left as noted minors; and the next command if one is needed (integration check, PR, merge). Keep paths and commands exact.
+After the report, ask the user if they want to review the output themselves. If they say no, stop. If they say yes, read [references/human-review.md](references/human-review.md) and follow it.
