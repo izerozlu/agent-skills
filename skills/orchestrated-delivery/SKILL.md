@@ -37,6 +37,7 @@ Give each Agent call a `description` that names the unit and role, for example `
 
 - Split work into **non-overlapping units**. Never let two sub-agents touch the same files or overlapping scope. A repo, service, or independent module is a natural unit.
 - Each unit works in its **own isolated worktree**. Create worktrees repo-local at `.worktrees/<branch-name>` (add `.worktrees` to `.gitignore` first if not ignored). Do not place worktrees as siblings of the repo.
+- When a work on a sub-agent's finished on the worktree and merged to the main feature worktree/branch, cleanup the worktree. Use /cleanup-worktree skill if available.
 - All feature branches are **based from the base branch** (`main` unless told otherwise).
 - **Do not push.** Branches stay local; the user pushes later. Never force-push, never merge.
 - No `Co-Authored-By` lines in commits. No em dashes in commit messages, PR bodies, or docs.
