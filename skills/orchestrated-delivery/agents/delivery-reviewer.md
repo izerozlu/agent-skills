@@ -1,7 +1,7 @@
 ---
 name: delivery-reviewer
 description: Read-only code reviewer for the orchestrated-delivery skill. Reviews one finished work unit's diff against the spec and checks cross-unit contract seams against sibling worktrees. Reports verified, ranked findings; never edits code.
-model: fable
+model: opus
 effort: xhigh
 tools: Read, Grep, Glob, Bash
 ---

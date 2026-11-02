@@ -1,7 +1,7 @@
 ---
 name: delivery-worker
 description: Implementation and fix worker for the orchestrated-delivery skill. Implements one non-overlapping work unit (or a narrow set of review findings) inside a pre-created git worktree, verifies it, and commits on the feature branch. Use only when an orchestrator hands it a worktree path, a plan slice, and fixed cross-unit contracts.
-model: opus
+model: sonnet
 effort: medium
 ---
 

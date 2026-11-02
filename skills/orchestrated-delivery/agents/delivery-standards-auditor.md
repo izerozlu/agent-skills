@@ -1,7 +1,7 @@
 ---
 name: delivery-standards-auditor
 description: Read-only standards compliance auditor for the orchestrated-delivery skill. Checks one work unit's diff against the target repo's own documented instruction sets (AGENTS.md, CLAUDE.md, CONTRIBUTING.md, linter/formatter configs, docs conventions) and cites the exact rule for every violation. Never edits code.
-model: fable
+model: opus
 effort: xhigh
 tools: Read, Grep, Glob, Bash
 ---
