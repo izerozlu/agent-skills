@@ -3,8 +3,8 @@
 A personal collection of agent skills
 for wrapping up and delivering features. They install as **standalone skills**,
 so you invoke them by their bare names, `/finalize-feature`,
-`/commit-in-logical-groups`, `/generate-feature-documentation`,
-`/orchestrated-delivery`, with no plugin prefix.
+`/generate-feature-documentation`, `/orchestrated-delivery`, with no plugin
+prefix.
 
 ## Skills
 
@@ -12,12 +12,12 @@ so you invoke them by their bare names, `/finalize-feature`,
 |-------|--------------|
 | `finalize-feature` | Wrap up a completed feature: document the uncommitted diff under `docs/features/`, then commit everything in logical thematic groups. |
 | `generate-feature-documentation` | Inspect uncommitted changes and write a concise feature-status doc under `docs/features/`, without committing. |
-| `commit-in-logical-groups` | Split pending changes into separate, focused commits grouped by theme, one commit per reason to change. |
 | `orchestrated-delivery` | Deliver a multi-part feature by orchestrating sub-agents: implement units in parallel in isolated worktrees, review and standards-audit each unit as it lands, fix the important findings, then report. Optional human review at the end. |
 
-`finalize-feature` runs the first two as a single wrap-up flow (document, then
-commit). `orchestrated-delivery` is a separate flow for delivering a plan or
-spec across several repos, services, or modules with sub-agents.
+`finalize-feature` runs a single wrap-up flow (document, then commit in logical
+groups). `generate-feature-documentation` runs only the document step.
+`orchestrated-delivery` is a separate flow for delivering a plan or spec across
+several repos, services, or modules with sub-agents.
 
 ## Install
 
@@ -46,7 +46,6 @@ invoke them:
 ```
 /finalize-feature
 /generate-feature-documentation
-/commit-in-logical-groups
 /orchestrated-delivery
 ```
 
@@ -114,7 +113,6 @@ agent-skills/
 └── skills/
     ├── finalize-feature/SKILL.md
     ├── generate-feature-documentation/SKILL.md
-    ├── commit-in-logical-groups/SKILL.md
     └── orchestrated-delivery/
         ├── SKILL.md
         ├── agents/          # delivery-worker, -reviewer, -standards-auditor
