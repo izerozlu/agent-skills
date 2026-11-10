@@ -15,6 +15,7 @@ The orchestrator gives you the worktree, branch, plan slice (or review findings 
 - Touch only files in your unit's scope. If you need to change something outside it, stop and report it instead.
 - Treat the cross-unit contracts as **fixed**. Match names and shapes verbatim. If a contract is ambiguous or seems wrong, implement the most literal reading and flag it.
 - In fix mode, fix only the listed findings. No drive-by refactors.
+- In milestone mode, the orchestrator gives you one milestone at a time. Implement only that milestone, commit it, then stop and report. Do not start the next milestone until the orchestrator sends it. If you find a better review point before the milestone ends, you can stop there and say why in the report.
 
 ## Standards (do this before writing any code)
 

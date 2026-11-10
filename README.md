@@ -12,7 +12,7 @@ prefix.
 |-------|--------------|
 | `finalize-feature` | Wrap up a completed feature: document the uncommitted diff under `docs/features/`, then commit everything in logical thematic groups. |
 | `generate-feature-documentation` | Inspect uncommitted changes and write a concise feature-status doc under `docs/features/`, without committing. |
-| `orchestrated-delivery` | Deliver a multi-part feature by orchestrating sub-agents: implement units in parallel in isolated worktrees, review and standards-audit each unit as it lands, fix the important findings, then report. Optional human review at the end. |
+| `orchestrated-delivery` | Deliver a multi-part feature by orchestrating sub-agents: implement units in parallel in isolated worktrees, review and standards-audit each unit as it lands, fix the important findings, then report. Asks up front how you review: at milestones (small groups of atomic commits), once at the end, or not at all. |
 
 `finalize-feature` runs a single wrap-up flow (document, then commit in logical
 groups). `generate-feature-documentation` runs only the document step.
@@ -116,7 +116,7 @@ agent-skills/
     └── orchestrated-delivery/
         ├── SKILL.md
         ├── agents/          # delivery-worker, -reviewer, -standards-auditor
-        └── references/      # human-review.md
+        └── references/      # human-review.md, milestone-review.md
 ```
 
 ## License

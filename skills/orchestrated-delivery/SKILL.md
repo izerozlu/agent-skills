@@ -50,6 +50,12 @@ Give each Agent call a `description` that names the unit and role, for example `
 1. Read the plan and spec. Identify the work units and the **cross-unit contracts** (API shapes, field names, event payloads, shared types). Write these contracts down explicitly - they are what parallel agents get wrong.
 2. Check each target repo's git state: on base branch, clean tree, base branch exists.
 3. Create one worktree + feature branch per unit, from the base branch. Do this yourself (deterministic) rather than making agents run git plumbing.
+4. Ask the user how they want to review the code, before any work starts. Use `AskUserQuestion` with these options:
+   - **Milestone reviews**: workers stop at milestones (small groups of atomic commits), and the user reviews each one before the work continues. Read [references/milestone-review.md](references/milestone-review.md) and follow it.
+   - **Final review**: the work runs to the end, then the user reviews the whole output in Phase 5.
+   - **No human review**: agent reviews only. Stop after the Phase 4 report.
+
+   Skip the question if the user already said which mode they want. Do not start Phase 1 until the mode (and, for milestone reviews, the milestone list) is agreed.
 
 ## Phases 1-3 - Implement, review, fix
 
@@ -65,6 +71,7 @@ Every prompt carries the unit's **absolute worktree path**, **branch**, and **ba
 - Surface rule-vs-code conflicts from the auditor to the user. Do not resolve them silently.
 - Skip minor/nit findings unless the user wants them, but report them.
 - Check each fix worker's report confirms re-verification (typecheck/lint/tests) and commits.
+- In milestone review mode, run Phases 1 to 3 once per milestone, not once per unit, and stop for the user after each milestone. See [references/milestone-review.md](references/milestone-review.md).
 
 ## Phase 4 - Report
 
@@ -72,4 +79,4 @@ Give the user an actionable summary: per unit - branch, worktree path, commit ha
 
 ## Phase 5 - Human review (optional)
 
-After the report, ask the user if they want to review the output themselves. If they say no, stop. If they say yes, read [references/human-review.md](references/human-review.md) and follow it.
+Run this phase only in **final review** mode. Read [references/human-review.md](references/human-review.md) and follow it. In **no human review** mode, stop after the report. In **milestone review** mode, follow the end step in [references/milestone-review.md](references/milestone-review.md).
